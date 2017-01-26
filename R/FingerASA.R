@@ -1,6 +1,6 @@
 # UCM data processing
-  #' Usage: load(subjects=c("Paula","Angelo"),wd=c("/Users/angelobj/Box Sync/ASA old paper/Prueba/"),Task="ASA")
-  #' @subjects: Name of subjets or folder and file name structure to search for file and analyze date,
+  #' Usage: UCM(subjects=c("S01","S02"),wd=c("/Users/Trials/"),Task="ASA")
+  #' @subjects: Name of subjets or folder and file name structure to search for file and analyze data,
   #' @wd: Working directory where Folders contain each folder. Use Finder or File explorer to set it (use slash to separate folders), and there HAS TO BE a slash(/) at the END
   #' @Task: Name of conditions or task evaluated or file name structure to search for file,
   #' @timeR: Time (s) of Ramp task for Regression Analysis for Enslaving Matrix calculation, by default between 5.5 and 7.5 s,
@@ -9,31 +9,36 @@
   #' @cutfreq: Cut off frequency. By default is set at 20Hz,
   #' @order: Filter order for data processing.
   #' @J: Jacobian Matrix, by default is [1 1 1 1]
-  
+
 UCM<-function(subjects,wd=NULL,Task=NULL,timeR=c(5.5,7.5),timeS=c(6,20),freq=1000,cutfreq=0.02,order=2,J=matrix(c(1,1,1,1),ncol=1)){
-  ## NEEDS to be checked: timeS 
-if (missing(subjects)) 
+## NEEDS to be checked: timeS
+# Automatically install needed packages  
+list.of.packages <- c("signal", "MASS","Matrix")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+  if(length(new.packages)) install.packages(new.packages)
+  
+if (missing(subjects))
     stop("There are no subjetcs specified to analize")
-  if (missing(wd)) 
+  if (missing(wd))
     warning("Working Directory was set by default as setwd()")
-  if (missing(Task)) 
+  if (missing(Task))
     stop("There are no Taks specified to analize")
-  if (missing(timeS)) 
+  if (missing(timeS))
     warning("There are no specified time intervals to search for ASAs")
-  if (missing(freq)) 
+  if (missing(freq))
     warning("Sampling frequency by default is set at 1kHz")
-  if (missing(cutfreq)) 
+  if (missing(cutfreq))
     warning("Cut off frequency for filtering by default is set at 20Hz")
-  if (missing(order)) 
+  if (missing(order))
     warning("Butterworth filter is set as 2nd order by default")
-  
+
   if (is.null(wd)) {wd<-setwd()}else{wd<-wd}# Check for Working Directory
-  
+
   #### Function to load starts here!. First stablish WD, then list files and finally load.############
   Ramp<-lapply(subjects,function(x){
     setwd(paste(wd,as.character(x),sep=""));getwd() # Set working directory
     Files<-list.files(pattern=paste("Ramp",sep=""))
-    
+
     # Confirm files and directory if necessary with print(getwd()) print(ramp)
     # Loading of Ramp files corresponds to fingers 1,3,4,2
     lapply(Files[c(1,3,4,2)],function(i){read.csv(i, header=FALSE, sep="\t",col.names=c("I","M","R","L")  )})})
@@ -42,25 +47,25 @@ if (missing(subjects))
   names(Ramp)<-subjects;# Lists names
   Ramp<-lapply(Ramp,function(x){names(x)<-c("I","M","R","L")
   x})# Nested lists names. Remember to retreive element to save names correctly
-  
+
   #### Estimates Total force and derives Individual Forces
   Ramp_tot<-sapply(names(Ramp),simplify=FALSE,USE.NAMES=T,
                    function(x){sapply(names(Ramp[[x]]),simplify=FALSE,USE.NAMES=T,function(i)
                    {data.frame(rbind(apply(Ramp[[x]][[i]][-c(1:10),],diff,MARGIN=2),1),Ftot=rowSums(Ramp[[x]][[i]][-c(1:10),]))}
                    )}) # F_tot computation. I also remove first datum
-  
+
   #### Data filtering ####
   library("signal")# install.packages("signal") if needed, load otherwise
-  
+
   if(!is.null(cutfreq)){W<-cutfreq/freq}else{W=cutfreq}
   bf2<-butter(2, W=W, type = "low") # Filter characteristics
-  
+
   Ramp_tot_f<- sapply(names(Ramp_tot),simplify=FALSE,USE.NAMES=T,
                       function(x){sapply(names(Ramp_tot[[x]]),simplify=FALSE,USE.NAMES=T,function(i)
                       {apply(Ramp_tot[[x]][[i]],filter,filt=bf2,MARGIN=2,names=i)}
-                      )}) 
+                      )})
   ########################
-  
+
   ###### Extract ascending or selected part of Ramp
   (if (is.null(timeR)) {
     init.r<-0 # After ramp begins
@@ -73,13 +78,13 @@ if (missing(subjects))
   Ramp_tot_f<-sapply(names(Ramp_tot_f),USE.NAMES=T,simplify=FALSE,
                      function(x){sapply(names(Ramp_tot_f[[x]]),USE.NAMES=TRUE,simplify=FALSE,
                                         function(i){Ramp_tot_f[[x]][[i]][init.r:final.r,]})})
-  
+
   ########################
   # Check if regression is to be calculated based on derivatives of forces
   E<-sapply(names(Ramp_tot_f),USE.NAMES=T,simplify=FALSE,
             function(x){sapply(names(Ramp_tot_f[[x]]),USE.NAMES=TRUE,
                                function(i){lm(Ftot~I+M+R+L-1,data=as.data.frame(Ramp_tot_f[[x]][[i]]))$coefficients})})
-  
+
   #### Plot every subject Individual Force
   par(mfrow=c(2,2))# Plotting data
   plot1<-sapply(names(Ramp),USE.NAMES=T,simplify=FALSE,
@@ -145,13 +150,13 @@ pch<-sapply(names(asa_df),USE.NAMES=TRUE,simplify=FALSE,
   library("MASS") # install.packages("MASS) if necessary
   # Null space for Finger Force J=matrix(1,1,1,1,byrow=F)
   if (!is.null(J)) {J=J}else{J=matrix(c(1,1,1,1),ncol=1)}
-  
+
 asa_modes<-sapply(names(asa_df),USE.NAMES=TRUE,simplify=FALSE,
   function(x){sapply(names(asa_df[[x]]),USE.NAMES=TRUE,simplify=FALSE,
   function(i){as.data.frame(apply(asa_df[[x]][[i]][((tASA[[x]][[i]]-2000):(tASA[[x]][[i]]+500)),1:4],
     function(j){solve(E[[x]])%*%as.matrix(j)},
                   MARGIN=1))})}) # Inverse Matrix with row-wise multiplication
-  
+
 V<-sapply(asa_modes,USE.NAMES=TRUE,simplify=FALSE,function(x){
   (apply(array(as.numeric(unlist(x)), dim=c( 4,2501,length(x) )),function(i){list(i)},MARGIN=2))}) # Organized as [[t]][F,T]. Joined two functions because I'm too lazy to shorten the code
 
@@ -175,7 +180,7 @@ x})# Nested lists names. Remember to retreive element to save names correctly
 
 
 v_ort<-sapply(names(V),USE.NAMES=T,simplify=FALSE,function(x)
-        sapply(x,USE.NAMES=T,simplify=FALSE,function(i){mapply(function(z,y) matrix(unlist(z)-unlist(y),ncol=dim(V[[x]][[1]][[1]])[2]), 
+        sapply(x,USE.NAMES=T,simplify=FALSE,function(i){mapply(function(z,y) matrix(unlist(z)-unlist(y),ncol=dim(V[[x]][[1]][[1]])[2]),
                               z=V[[x]],y=v_null[[x]],SIMPLIFY =FALSE)}))
 
 # unlist(apply(v[,1:2,],function(x){P%*%x},MARGIN=2)#,dim=c(4,2,length(ASA_tot_f)))
@@ -200,16 +205,16 @@ dV = mapply(function(x,y) unlist(a)/unlist(b), x=a, y=b, SIMPLIFY=FALSE)
               "V UCM Norm"=VucmNorm,"V ORT Norm"=VortNorm,"Vtot"= Vtot, "a"=a,"b"=b,"dV"=dV,
               "E"=E))
 }
-ASA<-UCM(subjects=c("Paula","Angelo"),wd=c("/Users/angelobj/Box Sync/ASA old paper/Prueba/"),Task="ASA",cutfreq = 20)
-rm(list = ls())
-bf2<-butter(2, W=0.02, type = "low") 
-cutfreq=20
-freq=1000
-timeR=c(5.5,7.5)
-timeS=c(6,14)
-wd=c("/Users/angelobj/Box Sync/ASA old paper/Prueba/")
-Task="ASA"
-subjects<-c("Paula","Angelo")
+#ASA<-UCM(subjects=c("Paula","Angelo"),wd=c("/Users/angelobj/Box Sync/ASA old paper/Prueba/"),Task="ASA",cutfreq = 20)
+#rm(list = ls())
+#bf2<-butter(2, W=0.02, type = "low")
+#cutfreq=20
+#freq=1000
+#timeR=c(5.5,7.5)
+#timeS=c(6,14)
+#wd=c("/Users/angelobj/Box Sync/ASA old paper/Prueba/")
+#Task="ASA"
+#subjects<-c("Paula","Angelo")
 # Reads files names (ramp) and stores (Ramp) data
-rm("cutfreq","freq","timeR","timeS","Task","E","init.r","init.s","final.r","final.s","asa","asa_tot",
-   "asa_tot_f","asa_f","ASA","tASA","plot1", "Ramp","Ramp_tot","Ramp_tot_f","t","tASA","W","level")
+#rm("cutfreq","freq","timeR","timeS","Task","E","init.r","init.s","final.r","final.s","asa","asa_tot",
+#   "asa_tot_f","asa_f","ASA","tASA","plot1", "Ramp","Ramp_tot","Ramp_tot_f","t","tASA","W","level")
