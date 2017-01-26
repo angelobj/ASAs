@@ -1,10 +1,13 @@
 Package: ASAs
-Title: What the Package Does (one line, title case)
-Version: 0.0.0.9000
-Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-Depends: R (>= 3.3.1)
-License: What license is it under?
+Title: UCM analysis
+Version: 0.0.0.1
+Authors@R: c(person("Angelo Bartsch", "Developer", role = c("aut", "cre"),
+  	     email = "angelo.bartsch@uv.cl"))
+Author: Angelo Bartscg [aut, cre],
+  A. User [ctb]
+Maintainer: Angelo Bartscg <angelo.bartsch@uv.cl>
+Depends: R (>= 3.1.0), MASS,signal, Matrix
+Description: UCM analysis
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 5.0.1.9000
