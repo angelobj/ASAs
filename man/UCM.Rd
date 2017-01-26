@@ -1,7 +1,7 @@
 \name{UCM}
 \alias{ASAs}
 %- Also NEED an '\alias' for EACH other topic documented here.
-\title{
+\title{UCM analysis for Finger forces
 %%  ~~function to do ... ~~
 }
 \description{
